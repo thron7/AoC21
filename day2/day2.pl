@@ -46,26 +46,33 @@ reduce([], 0, 0).
 reduce([L|Ls],Forward,Down):-
     line(Verb,Amount,L,[]),
     reduce(Ls,F,D),
-    (   Verb = forward ->
-        Forward is F + Amount,
-        Down is D
-    ;   Forward is F,
-        (Verb = up ->
-            Down is D - Amount
-        ;   Down is D + Amount)).
+    calc(Verb, Amount, Forward, Down, F, D).
+
+calc(forward, Amount, Forward, Down, F, D):-
+    Forward is F + Amount,
+    Down is D.
+calc(up, Amount, Forward, Down, F, D):-
+    Forward is F,
+    Down is D - Amount.
+calc(down, Amount, Forward, Down, F, D):-
+    Forward is F,
+    Down is D + Amount.
 
 reduce([], F, D, [F, _, D]).
 reduce([L|Ls], Forward, Down, [Pos, Aim, Depth]):-
     line(Verb,Amount,L,[]),
-    (   Verb = forward ->
-        P is Pos + Amount,
-        A is Aim,
-        D is Depth + Aim * Amount
-    ;   P is Pos,
-        D is Depth,
-        (Verb = up ->
-            A is Aim - Amount
-        ;   A is Aim + Amount
-        )
-    ),
+    calc(Verb, Amount, P, A, D, Pos, Aim, Depth),
     reduce(Ls, Forward, Down, [P,A,D]).
+
+calc(forward, Amount, P, A, D, Pos, Aim, Depth):-
+    P is Pos + Amount,
+    A is Aim,
+    D is Depth + Aim * Amount.
+calc(up, Amount, P, A, D, Pos, Aim, Depth):-
+    P is Pos,
+    D is Depth,
+    A is Aim - Amount.
+calc(down, Amount, P, A, D, Pos, Aim, Depth):-
+    P is Pos,
+    D is Depth,
+    A is Aim + Amount.
