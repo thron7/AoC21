@@ -1,0 +1,1 @@
+% s. https://stackoverflow.com/questions/29380105/prolog-binary-addition
