@@ -8,8 +8,7 @@ main(File, Product, Product2):-
     close(Stream), !,
     prepare(Lines, AtomLines),
     solve_1(AtomLines, Product),
-    solve_2(AtomLines, Product2),
-    true.
+    solve_2(AtomLines, Product2).
 
 read_file(Stream, []):-
     at_end_of_stream(Stream).
@@ -38,6 +37,11 @@ solve_1(L, Result):-
     reduce(L,Forward,Down),
     Result is Forward * Down.
 
+solve_2([],0).
+solve_2(L,Result):-
+    reduce(L, Forward, Down, [0, 0, 0]),
+    Result is Forward * Down.
+
 reduce([], 0, 0).
 reduce([L|Ls],Forward,Down):-
     line(Verb,Amount,L,[]),
@@ -50,20 +54,18 @@ reduce([L|Ls],Forward,Down):-
             Down is D - Amount
         ;   Down is D + Amount)).
 
-solve_2([],0).
-solve_2(L,Result):-
-    reduce2(L,Forward,_,Down),
-    Result is Forward * Down.
-
-reduce2([], 0, 0, 0).
-reduce2([L|Ls], Forward, Aim, Down):-
+reduce([], F, D, [F, _, D]).
+reduce([L|Ls], Forward, Down, [Pos, Aim, Depth]):-
     line(Verb,Amount,L,[]),
-    reduce2(Ls,F,A,D),
     (   Verb = forward ->
-        Forward is F + Amount,
-        Down is D + A * Amount,
-        Aim is A
-    ;   Forward is F,
+        P is Pos + Amount,
+        A is Aim,
+        D is Depth + Aim * Amount
+    ;   P is Pos,
+        D is Depth,
         (Verb = up ->
-            Aim is A - Amount
-        ;   Aim is A + Amount)).
+            A is Aim - Amount
+        ;   A is Aim + Amount
+        )
+    ),
+    reduce(Ls, Forward, Down, [P,A,D]).
