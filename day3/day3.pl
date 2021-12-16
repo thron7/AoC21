@@ -35,10 +35,8 @@ solve_1(BitLines, Product):-
     accumulateLines(BitLines,A,A1),
     gammaRate(A1,Len,G),
     binary_number(G,GammaRate),
-    write(GammaRate), nl,
     invert(G,E),
     binary_number(E,EpsilonRate),
-    write(EpsilonRate), nl,
     Product #= GammaRate * EpsilonRate.
 
 solve_2(AtomLines, Product2).
