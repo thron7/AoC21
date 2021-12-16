@@ -1,6 +1,7 @@
 % s. https://stackoverflow.com/questions/29380105/prolog-binary-addition
 :- use_module(library(readutil)).
 :- use_module(library(clpfd)).
+:- use_module(library(lists)).
 
 main(Product, Product2):-
     main('input.txt',Product, Product2).
@@ -39,7 +40,33 @@ solve_1(BitLines, Product):-
     binary_number(E,EpsilonRate),
     Product #= GammaRate * EpsilonRate.
 
-solve_2(AtomLines, Product2).
+solve_2(BitLines, Product2):-
+    BitLines = [L|_],
+    init(L,A),
+    accumulateLines(BitLines,A,A1),
+    A = [Bit1|_],
+    filterByBitInPos(BitLines,Bit1,1,R).
+
+oxyRate(BitLines,R):-
+    filterBitLines(BitLines,1,R).
+
+filterBitLines([B],_,B).
+filterBitLines(BitLines,Pos,R):-
+    initAccu(BitLines,A,Len),
+    Pos < Len,
+    accumulateLines(BitLines,A,Accu),
+    gammaRate(Accu,Len,SigBits),
+    nth1(Pos,SigBits,SigBit,_),
+    filterByBitInPos(BitLines,SigBit,Pos,NewSet),
+    P #= Pos + 1,
+    filterBitLines(NewLines,P,R).
+
+initAccu(BitLines,A,L):-
+    length(BitLines,L),
+    BitLines = [L1|_],
+    init(L1,A).
+
+co2Rate().
 
 % init(Line, Accu).
 init([],[]).
@@ -82,3 +109,12 @@ invert([B|Bs],[I|Is]):-
     B in 0..1,
     ( B #= 1 -> I #= 0 ; I #= 1 ),
     invert(Bs,Is).
+
+% filterByBitInPos(ListOfBytes,SearchBit,BitPos,Result).
+filterByBitInPos([],_,_,[]).
+filterByBitInPos([L|Ls],Bit,Pos,[L|Rs]):-
+    nth1(Pos,L,Bit),
+    filterByBitInPos(Ls,Bit,Pos,Rs).
+filterByBitInPos([L|Ls],Bit,Pos,Rs):-
+    \+ nth1(Pos,L,Bit),
+    filterByBitInPos(Ls,Bit,Pos,Rs).
