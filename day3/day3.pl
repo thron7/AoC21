@@ -6,12 +6,15 @@
 main(Product, Product2):-
     main('input.txt',Product, Product2).
 main(File, Product, Product2):-
-    open(File, read, Stream),
-    read_file(Stream, Lines),
-    close(Stream), !,
+    read_data(File,Lines), !,
     prepare(Lines, BitLines),
     solve_1(BitLines, Product),
     solve_2(BitLines, Product2).
+
+read_data(File,Lines):-
+    open(File, read, Stream),
+    read_file(Stream, Lines),
+    close(Stream).
 
 read_file(Stream, []):-
     at_end_of_stream(Stream).
@@ -87,10 +90,13 @@ accumulateLines([L|Ls],A,A1):-
     lineToAccu(L,A,A2),
     accumulateLines(Ls,A2,A1).
 
-gammaRate([],_,[]).
-gammaRate([A|As],Len,[R|Rs]):-
+gammaRate(A,L,R):-
+    gammaRate(A,L,R,0).
+gammaRate([],_,[],_).
+gammaRate([A|As],Len,[R|Rs],Slant):-
     L is Len / 2,
-    ( A > L -> R is 1 ; R is 0 ),
+    A1 #= A + Slant,
+    ( A1 > L -> R is 1 ; R is 0 ),
     gammaRate(As,Len,Rs).
 
 binary_number(Bs0, N) :-
