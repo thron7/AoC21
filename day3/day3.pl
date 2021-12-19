@@ -4,16 +4,17 @@
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 
-main(Product, Product2):-
-    main('input.txt',Product, Product2).
-main(File, Product, Product2):-
+main(Solution1, Solution2):-
+    main('input.txt',Solution1, Solution2).
+main(File, Solution1, Solution2):-
     read_data(File,Lines), !,
     prepare(Lines, BitLines),
-    % solve_1(BitLines, Product),
-    % day3_1(BitLines, Product),
-    % solve_2(BitLines, Product2).
-    % day3_2(BitLines, Product2).
-    sol_1(BitLines,Product).
+    % solve_1(BitLines, Solution1),
+    % day3_1(BitLines, Solution1),
+    % solve_2(BitLines, Solution2).
+    % day3_2(BitLines, Solution2).
+    sol_1(BitLines,Solution1),
+    sol_2(BitLines,Solution2).
 
 read_data(File,Lines):-
     open(File, read, Stream),
@@ -56,13 +57,13 @@ solve_2(BitLines, Product2):-
     Product2 is ORate * CRate.
 
 oxyRate(BitLines,R):-
-    filterBitLines(BitLines,1,R,true).
+    filterBitLines1(BitLines,1,R,true).
 
 co2Rate(BitLines,R):-
-    filterBitLines(BitLines,1,R,false).
+    filterBitLines1(BitLines,1,R,false).
 
-filterBitLines([B],_,B,_):- !.
-filterBitLines(BitLines,Pos,R,ForOxy):-
+filterBitLines1([B],_,B,_):- !.
+filterBitLines1(BitLines,Pos,R,ForOxy):-
     initAccu(BitLines,A,Len),
     accumulateLines(BitLines,A,Accu),
     gammaRate(Accu,Len,SigBits),
@@ -70,7 +71,7 @@ filterBitLines(BitLines,Pos,R,ForOxy):-
     nth1(Pos,SigBits1,SigBit,_), % fails if Pos > length(SigBits)
     filterByBitInPos(BitLines,SigBit,Pos,NewLines),
     P #= Pos + 1,
-    filterBitLines(NewLines,P,R,ForOxy).
+    filterBitLines1(NewLines,P,R,ForOxy).
 
 initAccu(BitLines,A,L):-
     length(BitLines,L),
@@ -142,10 +143,10 @@ zeros(L,N):-
     partition(isZero, L, I, _),
     length(I, N).
 
-onesDominate(Col,R):-
+dominantBit(Col,R):-
     ones(Col,Os),
     zeros(Col,Zs),
-    (   Os #> Zs -> R = 1; R = 0).
+    (   Os #>= Zs -> R = 1; R = 0). % day3_1 braucht hier Os #> Zs
 
 map([],_,[]).
 map([L|Ls],Callable,[R|Rs]):-
@@ -154,7 +155,7 @@ map([L|Ls],Callable,[R|Rs]):-
 
 day3_1(Input,Result):-
     transpose(Input,T),
-    map(T,onesDominate, Lst),
+    map(T,dominantBit, Lst),
     invert(Lst, Eps),
     binary_number(Lst, Gamma),
     binary_number(Eps, Epsilon),
@@ -210,11 +211,45 @@ epsilonRate(BitLines,EpsilonRate):-
     
 gammaRate(BitLines,GammaRate):-
     transpose(BitLines, TransposedLines),
-    significantBits(TransposedLines,GammaRate).
+    dominantBits(TransposedLines,GammaRate).
 
-significantBits([],[]).
-significantBits([Bline|BitLines],[SBit|SigBits]):-
-    ones(Bline,Ones),
-    zeros(Bline,Zeros),
-    (   Ones > Zeros -> SBit is 1; SBit is 0),
-    significantBits(BitLines,SigBits).
+dominantBits([],[]).
+dominantBits([Bline|BitLines],[DBit|DomBits]):-
+    dominantBit(Bline,DBit),
+    dominantBits(BitLines,DomBits).
+
+sol_2(BitLines,Result):-
+    findGas(BitLines,oxy,Oxy),
+    findGas(BitLines,co2,C),
+    binary_number(Oxy, Oxygen),
+    binary_number(C,Co2),
+    Result is Oxygen * Co2.
+
+findGas(BitLines,Gas,R):-
+    findGas(BitLines,1,Gas,R).
+findGas([B],_,_,B):- !.
+findGas(BitLines,Pos,Gas,R):-
+    filterBitLines(BitLines,Pos,Gas,NewLines),
+    P is Pos + 1,
+    findGas(NewLines,P,Gas,R).
+
+filterBitLines([],_,_,[]).
+filterBitLines(BitLines,Pos,Gas,NewLines):-
+    dominantBitInPos(BitLines,Pos,DomBit),
+    (   Gas = oxy -> SearchBit = DomBit; invert([DomBit],[SearchBit])),
+    selectMatching(BitLines,Pos,SearchBit,NewLines).
+
+dominantBitInPos(BitLines, Pos, DomBit):-
+    transpose(BitLines,Transposed),
+    nth1(Pos,Transposed,Col),
+    dominantBit(Col,DomBit).
+
+selectMatching([],_,_,[]).
+selectMatching([B|BitLines],Pos,DomBit,[B|NewLines]):-
+    nth1(Pos,B,PosBit),
+    PosBit = DomBit,
+    selectMatching(BitLines,Pos,DomBit,NewLines).
+selectMatching([B|BitLines],Pos,DomBit,NewLines):-
+    nth1(Pos,B,PosBit),
+    \+ PosBit = DomBit,
+    selectMatching(BitLines,Pos,DomBit,NewLines).
