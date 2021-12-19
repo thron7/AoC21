@@ -45,32 +45,33 @@ solve_1(BitLines, Product):-
     Product #= GammaRate * EpsilonRate.
 
 solve_2(BitLines, Product2):-
-    BitLines = [L|_],
-    init(L,A),
-    accumulateLines(BitLines,A,A1),
-    A = [Bit1|_],
-    filterByBitInPos(BitLines,Bit1,1,R).
+    oxyRate(BitLines, OxyRate),
+    co2Rate(BitLines, CO2Rate),
+    binary_number(OxyRate,ORate),
+    binary_number(CO2Rate, CRate),
+    Product2 is ORate * CRate.
 
 oxyRate(BitLines,R):-
-    filterBitLines(BitLines,1,R).
+    filterBitLines(BitLines,1,R,true).
 
-filterBitLines([B],_,B).
-filterBitLines(BitLines,Pos,R):-
+co2Rate(BitLines,R):-
+    filterBitLines(BitLines,1,R,false).
+
+filterBitLines([B],_,B,_):- !.
+filterBitLines(BitLines,Pos,R,ForOxy):-
     initAccu(BitLines,A,Len),
-    Pos < Len,
     accumulateLines(BitLines,A,Accu),
     gammaRate(Accu,Len,SigBits),
-    nth1(Pos,SigBits,SigBit,_),
-    filterByBitInPos(BitLines,SigBit,Pos,NewSet),
+    (   ForOxy -> SigBits1 = SigBits; invert(SigBits,SigBits1) ),
+    nth1(Pos,SigBits1,SigBit,_), % fails if Pos > length(SigBits)
+    filterByBitInPos(BitLines,SigBit,Pos,NewLines),
     P #= Pos + 1,
-    filterBitLines(NewLines,P,R).
+    filterBitLines(NewLines,P,R,ForOxy).
 
 initAccu(BitLines,A,L):-
     length(BitLines,L),
     BitLines = [L1|_],
     init(L1,A).
-
-co2Rate().
 
 % init(Line, Accu).
 init([],[]).
@@ -91,13 +92,10 @@ accumulateLines([L|Ls],A,A1):-
     lineToAccu(L,A,A2),
     accumulateLines(Ls,A2,A1).
 
-gammaRate(A,L,R):-
-    gammaRate(A,L,R,0).
-gammaRate([],_,[],_).
-gammaRate([A|As],Len,[R|Rs],Slant):-
+gammaRate([],_,[]).
+gammaRate([A|As],Len,[R|Rs]):-
     L is Len / 2,
-    A1 #= A + Slant,
-    ( A1 > L -> R is 1 ; R is 0 ),
+    ( A >= L -> R is 1 ; R is 0 ),
     gammaRate(As,Len,Rs).
 
 binary_number(Bs0, N) :-
