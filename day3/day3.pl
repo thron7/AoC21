@@ -9,8 +9,10 @@ main(Product, Product2):-
 main(File, Product, Product2):-
     read_data(File,Lines), !,
     prepare(Lines, BitLines),
-    solve_1(BitLines, Product),
-    solve_2(BitLines, Product2).
+    % solve_1(BitLines, Product),
+    day3_1(BitLines, Product),
+    % solve_2(BitLines, Product2).
+    day3_2(BitLines, Product2).
 
 read_data(File,Lines):-
     open(File, read, Stream),
@@ -28,6 +30,7 @@ prepareLine([],[]).
 prepareLine([X|Xs],[Y|Ys]):-
     number_codes(Y,[X]),
     prepareLine(Xs,Ys).
+
 prepare([], []).
 prepare([L|Ls], [X|Xs]):-
     prepareLine(L,X),
@@ -98,11 +101,10 @@ gammaRate([A|As],Len,[R|Rs]):-
     ( A >= L -> R is 1 ; R is 0 ),
     gammaRate(As,Len,Rs).
 
+binary_number([], _, N, N).
 binary_number(Bs0, N) :-
     reverse(Bs0, Bs),
     binary_number(Bs, 0, 0, N).
-
-binary_number([], _, N, N).
 binary_number([B|Bs], I0, N0, N) :-
     B in 0..1,
     N1 #= N0 + (2^I0)*B,
@@ -123,6 +125,10 @@ filterByBitInPos([L|Ls],Bit,Pos,[L|Rs]):-
 filterByBitInPos([L|Ls],Bit,Pos,Rs):-
     \+ nth1(Pos,L,Bit),
     filterByBitInPos(Ls,Bit,Pos,Rs).
+
+%
+% Haskell-esque Loesung
+%
 
 isOne(X):- X #= 1.
 isZero(X):- X #= 0.
@@ -145,7 +151,6 @@ map([L|Ls],Callable,[R|Rs]):-
     call(Callable, L, R),
     map(Ls, Callable, Rs).
 
-
 day3_1(Input,Result):-
     transpose(Input,T),
     map(T,onesDominate, Lst),
@@ -153,4 +158,37 @@ day3_1(Input,Result):-
     binary_number(Lst, Gamma),
     binary_number(Eps, Epsilon),
     Result is Gamma * Epsilon.
+
+heads([],[]).
+heads([[H|_]|Ls],[H|Hs]):- heads(Ls,Hs).
+
+xssPrime([],_,[]).
+xssPrime([L|Ls],Bit,[R|Rs]):-
+    L = [Bit|R],
+    xssPrime(Ls,Bit,Rs).
+xssPrime([L|Ls],Bit,Rs):-
+    \+ L = [Bit|_],
+    xssPrime(Ls,Bit,Rs).
+
+calc(_,Bits,[Xs],R):-
+    !,
+    reverse(Bits, Bits1),
+    append(Bits1,Xs,R).
+calc(Comp,Bits,Xss,R):-
+    heads(Xss,Heads),
+    ones(Heads,Ones),
+    zeros(Heads,Zeros),
+    (   call(Comp,Ones,Zeros)
+        -> Bit is 1; Bit is 0),
+    xssPrime(Xss,Bit,Xss1),
+    calc(Comp,[Bit|Bits],Xss1,R).
+    
+toInt(Comp,Input,R):- 
+    calc(Comp,[],Input,R1),
+    binary_number(R1,R).
+
+day3_2(Input,Result):-
+    toInt(>=, Input, Oxygen),
+    toInt(<, Input, Co2),
+    Result is Oxygen * Co2.
     
