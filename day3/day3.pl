@@ -10,9 +10,10 @@ main(File, Product, Product2):-
     read_data(File,Lines), !,
     prepare(Lines, BitLines),
     % solve_1(BitLines, Product),
-    day3_1(BitLines, Product),
+    % day3_1(BitLines, Product),
     % solve_2(BitLines, Product2).
-    day3_2(BitLines, Product2).
+    % day3_2(BitLines, Product2).
+    sol_1(BitLines,Product).
 
 read_data(File,Lines):-
     open(File, read, Stream),
@@ -101,10 +102,10 @@ gammaRate([A|As],Len,[R|Rs]):-
     ( A >= L -> R is 1 ; R is 0 ),
     gammaRate(As,Len,Rs).
 
-binary_number([], _, N, N).
 binary_number(Bs0, N) :-
     reverse(Bs0, Bs),
     binary_number(Bs, 0, 0, N).
+binary_number([], _, N, N).
 binary_number([B|Bs], I0, N0, N) :-
     B in 0..1,
     N1 #= N0 + (2^I0)*B,
@@ -191,4 +192,29 @@ day3_2(Input,Result):-
     toInt(>=, Input, Oxygen),
     toInt(<, Input, Co2),
     Result is Oxygen * Co2.
+
+%
+% Declarative Solution
+%
+
+sol_1(BitLines,Result):-
+    gammaRate(BitLines,GRate),
+    epsilonRate(BitLines,ERate),
+    binary_number(GRate,GammaRate),
+    binary_number(ERate,EpsilonRate),
+    Result is GammaRate * EpsilonRate.
+
+epsilonRate(BitLines,EpsilonRate):-
+    gammaRate(BitLines,ERate),
+    invert(ERate,EpsilonRate).
     
+gammaRate(BitLines,GammaRate):-
+    transpose(BitLines, TransposedLines),
+    significantBits(TransposedLines,GammaRate).
+
+significantBits([],[]).
+significantBits([Bline|BitLines],[SBit|SigBits]):-
+    ones(Bline,Ones),
+    zeros(Bline,Zeros),
+    (   Ones > Zeros -> SBit is 1; SBit is 0),
+    significantBits(BitLines,SigBits).
