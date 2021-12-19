@@ -2,6 +2,7 @@
 :- use_module(library(readutil)).
 :- use_module(library(clpfd)).
 :- use_module(library(lists)).
+:- use_module(library(apply)).
 
 main(Product, Product2):-
     main('input.txt',Product, Product2).
@@ -124,3 +125,34 @@ filterByBitInPos([L|Ls],Bit,Pos,[L|Rs]):-
 filterByBitInPos([L|Ls],Bit,Pos,Rs):-
     \+ nth1(Pos,L,Bit),
     filterByBitInPos(Ls,Bit,Pos,Rs).
+
+isOne(X):- X #= 1.
+isZero(X):- X #= 0.
+
+ones(L,N):-
+    partition(isOne, L, Included, Excluded),
+    length(Included, N).
+
+zeros(L,N):-
+    partition(isZero, L, I, _),
+    length(I, N).
+
+onesDominate(Col,R):-
+    ones(Col,Os),
+    zeros(Col,Zs),
+    (   Os #> Zs -> R = 1; R = 0).
+
+map([],_,[]).
+map([L|Ls],Callable,[R|Rs]):-
+    call(Callable, L, R),
+    map(Ls, Callable, Rs).
+
+
+day3_1(Input,Result):-
+    transpose(Input,T),
+    map(T,onesDominate, Lst),
+    invert(Lst, Eps),
+    binary_number(Lst, Gamma),
+    binary_number(Eps, Epsilon),
+    Result is Gamma * Epsilon.
+    
