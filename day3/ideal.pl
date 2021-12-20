@@ -43,7 +43,7 @@ solve_1(BitLines,Result):-
 
 gammaRate(BitLines,GammaRate):-
     transpose(BitLines, TransposedLines),
-    dominantBits(TransposedLines,GammaRate).
+    dominantBits1(TransposedLines,GammaRate).
 
 epsilonRate(BitLines,EpsilonRate):-
     gammaRate(BitLines,ERate),
@@ -75,14 +75,18 @@ dominantBitInPos(BitLines, Pos, DomBit):-
     nth1(Pos,Transposed,Col),
     dominantBit(Col,DomBit).
 
+% direct version
 dominantBits([],[]).
 dominantBits([Bline|BitLines],[DBit|DomBits]):-
     dominantBit(Bline,DBit),
     dominantBits(BitLines,DomBits).
-% dominantBits(BitLines,DomBits):-
-%     reduce(dominantBits, BitLines, [], DomBits).
-% dominantBits(Accu,L,[R|Accu]):-
-%     dominantBit(L,R).
+% version using reduce/4
+dominantBits1(BitLines,DomBits):-
+    reduce(dominantBitsReducer, BitLines, [], DBits),
+    reverse(DBits,DomBits).
+% reducer
+dominantBitsReducer(Accu,L,[R|Accu]):-
+    dominantBit(L,R).
 
 selectMatching([],_,_,[]).
 selectMatching([B|BitLines],Pos,DomBit,[B|NewLines]):-
