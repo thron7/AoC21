@@ -19,28 +19,23 @@ number_calls(Line, Calls):-
     split_string(Line, ",", " ", SNumbers),
     map(string_number, SNumbers, Calls).
 
-boards(Lines,Boards).
-
 board_line(Line,Nums):-
     split_string(Line, " ", " ", SNumbs),
     map(string_number, SNumbs, Nums).
 
-extract_boards([],[]):- format('multiple_boards: base case~n').
-extract_boards(Lines,[Board|Boards]):-
-    extract_board(Lines,Board,Rest),
-    \+ Board = [],
-    extract_boards(Rest, Boards).
-extract_boards(Lines,Boards):-
-    extract_board(Lines,Board,Rest),
-    Board = [],
-    extract_boards(Rest, Boards).
+boards([],[]). % :- format('multiple_boards: base case~n').
+boards([L|Lines],Boards):-
+    board([L|Lines],Board,Rest),
+    (   Board = [] -> Boards = Bs;
+        Boards = [Board|Bs]),
+    boards(Rest, Bs).
 
-extract_board([],[],[]):- format('single_board: base case~n').
-extract_board([[]|Ls],[],Ls):- format('single_board: rest case~n').
-extract_board([L|Ls],[B|Bs],Rest):-
+board([],[],[]). % :- format('single_board: base case~n').
+board([[]|Ls],[],Ls). % :- format('single_board: rest case~n').
+board([L|Ls],[B|Bs],Rest):-
     board_line(L, B),
-    format('line: ~w~n', [B]),
-    extract_board(Ls,Bs,Rest).
+    % format('line: ~w~n', [B]),
+    board(Ls,Bs,Rest).
 
 read_data(File,Lines):-
     open(File, read, Stream),
