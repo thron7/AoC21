@@ -37,6 +37,42 @@ board([L|Ls],[B|Bs],Rest):-
     % format('line: ~w~n', [B]),
     board(Ls,Bs,Rest).
 
+print_board([]).
+print_board([L|Ls]):-
+    write(L), nl,
+    print_board(Ls).
+
+print_boards([]).
+print_boards([B|Bs]):-
+    print_board(B), nl,
+    print_boards(Bs).
+
+get_board_val(B,L,C,V):-
+    nth1(L,B,Line),
+    nth1(C,Line,V).
+
+update_board(Board,Line,Column,Value,NewBoard):-
+    update_board(Bord,1,Line,Column,Value,NewBoard).
+update_board([],_,_,_,_,[]).
+update_board([B|Bs], I, L, C, V, [B|Ns]):-
+    I \= L,
+    I1 is I + 1,
+    update_board(Bs, I1, L, C, V, Ns).
+update_board([B|Bs], I, L, C, V, [N|Ns]):-
+    I = L,
+    update_line(B,C,V,N),
+    I1 is I + 1,
+    update_board(Bs, I1, L, C, V, Ns).
+
+update_line(Line,Column,Value,NewLine):-
+    update_line(Line,1,Column,Value,NewLine).
+update_line([],_,_,_,[]).
+update_line([E|Es],I,C,V,[N|Ns]):-
+    (   I = C -> N = V;
+        N = E),
+    I1 is I + 1,
+    update_line(Es,I1,C,V,Ns).
+
 read_data(File,Lines):-
     open(File, read, Stream),
     read_file(Stream, Lines), !,
