@@ -2,10 +2,7 @@
 :- use_module(library(clpfd)).
 :- use_module(library(lists)).
 :- use_module(library(apply)).
-:- op(100,fy,-).
-
 :- dynamic cuboid/4.
-:- retractall(cuboid(S,X,Y,Z)).
 
 check_cube_state([X,Y,Z],S):-
     cuboid(S,x=X1,y=Y1,z=Z1),
@@ -33,6 +30,7 @@ list_relevant_cubes([X,Y,Z]):-
 main(Solution1, Solution2):-
     main('input.txt',Solution1, Solution2).
 main(File, Solution1, Solution2):-
+    retractall(cuboid(_,_,_,_)),
     read_data(File,Lines),
     lines_cuboids(Lines),
     solve_1(Solution1),
@@ -48,10 +46,11 @@ lines_cuboids([L|Ls]):-
     split_string(L, " ", " ", [State,Ranges]),
     atom_string(S,State),
     split_string(Ranges, ",", " ",[X1,Y1,Z1]),
-    term_range(X,X1),
-    term_range(Y,Y1),
-    term_range(Z,Z1),
-    assertz(cuboid(S,X,Y,Z)),
+    (   term_range(X,X1),
+        term_range(Y,Y1),
+        term_range(Z,Z1)
+    ->  assertz(cuboid(S,X,Y,Z))
+    ;   true),
     lines_cuboids(Ls).
 
 term_range(T,R):-
@@ -60,6 +59,8 @@ term_range(T,R):-
     term_string(H1, H),
     term_string(R2, RA),
     term_string(R3, RE),
+    R2 #=< 50,
+    R3 #>= -50,
     T = (H1=R2..R3).
 
 read_data(File,Lines):-
