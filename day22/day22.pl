@@ -59,9 +59,22 @@ term_range(T,R):-
     term_string(H1, H),
     term_string(R2, RA),
     term_string(R3, RE),
-    R2 #=< 50,
-    R3 #>= -50,
+    % uncomment to restrict to initialization region
+    % R2 #=< 50,
+    % R3 #>= -50,
     T = (H1=R2..R3).
+
+count_on_in_cuboid():-
+    cuboid(S,x=X,y=Y,z=Z),
+    states_in_cuboid(X,Y,Z,on,C).
+
+states_in_cuboid(x=XRange,y=YRange,z=ZRange,State,[X,Y,Z]):-
+    X in XRange,
+    Y in YRange,
+    Z in ZRange,
+    labeling([],[X,Y,Z]),
+    find_cube_state([X,Y,Z],S),
+    S = State.
 
 read_data(File,Lines):-
     open(File, read, Stream),
