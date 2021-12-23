@@ -2,14 +2,10 @@
 :- use_module(library(clpfd)).
 :- use_module(library(lists)).
 :- use_module(library(apply)).
+:- op(100,fy,-).
 
-:- dynamic(cuboid).
-:- retractall(cuboid).
-
-% cuboid(on,x=10..12,y=10..12,z=10..12).
-% cuboid(on, x=11..13,y=11..13,z=11..13).
-% cuboid(off, x=9..11,y=9..11,z=9..11).
-% cuboid(on, x=10..10,y=10..10,z=10..10).
+:- dynamic cuboid/4.
+:- retractall(cuboid(S,X,Y,Z)).
 
 check_cube_state([X,Y,Z],S):-
     cuboid(S,x=X1,y=Y1,z=Z1),
@@ -25,22 +21,25 @@ find_cube_state(C,S):-
     ).
 
 count_on_cubes(N):-
+    findall(C, (list_relevant_cubes(C),find_cube_state(C,on)), OnCubes),
+    length(OnCubes,N).
+
+list_relevant_cubes([X,Y,Z]):-
     X in -50..50,
     Y in -50..50,
     Z in -50..50,
-    labeling([],[X,Y,Z]),
-    findall(_, find_cube_state([X,Y,Z],on), States),
-    length(States,N).
+    labeling([],[X,Y,Z]).
     
 main(Solution1, Solution2):-
     main('input.txt',Solution1, Solution2).
 main(File, Solution1, Solution2):-
     read_data(File,Lines),
     lines_cuboids(Lines),
-    solve_1(Calls,Boards,Solution1),
+    solve_1(Solution1),
     solve_2(Calls,Boards,Solution2).
 
-solve_1(Calls,Boards,R).
+solve_1(S):-
+    count_on_cubes(S).
 
 solve_2(Calls,Boards,R).
     
@@ -49,11 +48,19 @@ lines_cuboids([L|Ls]):-
     split_string(L, " ", " ", [State,Ranges]),
     atom_string(S,State),
     split_string(Ranges, ",", " ",[X1,Y1,Z1]),
-    atom_string(X,X1),
-    atom_string(Y,Y1),
-    atom_string(Z,Z1),
+    term_range(X,X1),
+    term_range(Y,Y1),
+    term_range(Z,Z1),
     assertz(cuboid(S,X,Y,Z)),
     lines_cuboids(Ls).
+
+term_range(T,R):-
+    split_string(R,"=","",[H,R1]),
+    split_string(R1,".",".",[RA,RE]),
+    term_string(H1, H),
+    term_string(R2, RA),
+    term_string(R3, RE),
+    T = (H1=R2..R3).
 
 read_data(File,Lines):-
     open(File, read, Stream),
