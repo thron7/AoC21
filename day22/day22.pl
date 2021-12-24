@@ -27,20 +27,6 @@ list_relevant_cubes([X,Y,Z]):-
     Z in -50..50,
     labeling([],[X,Y,Z]).
     
-main(Solution1, Solution2):-
-    main('input.txt',Solution1, Solution2).
-main(File, Solution1, Solution2):-
-    retractall(cuboid(_,_,_,_)),
-    read_data(File,Lines),
-    lines_cuboids(Lines),
-    solve_1(Solution1),
-    solve_2(Calls,Boards,Solution2).
-
-solve_1(S):-
-    count_on_cubes(S).
-
-solve_2(Calls,Boards,R).
-    
 lines_cuboids([]).
 lines_cuboids([L|Ls]):-
     split_string(L, " ", " ", [State,Ranges]),
@@ -76,6 +62,89 @@ states_in_cuboid(x=XRange,y=YRange,z=ZRange,State,[X,Y,Z]):-
     find_cube_state([X,Y,Z],S),
     S = State.
 
+overlap(C1,C2):-
+    C1 = [x=X1,y=Y1,z=Z1],
+    C2 = [x=X2,y=Y2,z=Z2],
+    overlap(X1,X2),
+    overlap(Y1,Y2),
+    overlap(Z1,Z2).
+overlap(XA..XE,YA..YE):-
+    YA #=< XE,
+    YE #>= XA.
+
+test_overlaps():-
+    cuboid(S,X,Y,Z),
+    cuboid(S,X1,Y1,Z1),
+    (   overlap([X,Y,Z],[X1,Y1,Z1])
+    ->  format('operlapping: ~w - ~w~n',[[X,Y,Z],[X1,Y1,Z1]])
+    ;   true).
+
+combine_cuboids(C1,C2,C):-
+    C1 = [x=X1A..X1E,y=Y1A..Y1E,z=Z1A..Z1E],
+    C2 = [x=X2A..X2E,y=Y2A..Y2E,z=Z2A..Z2E],
+    XA is min(X1A,X2A), XE is max(X1E,X2E),
+    YA is min(Y1A,Y2A), YE is max(Y1E,Y2E),
+    ZA is min(Z1A,Z2A), ZE is max(Z1E,Z2E),
+    C = [x=XA..XE,y=YA..YE,z=ZA..ZE].
+
+cubes_in_cuboid(C,N):-
+    C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
+    X is XE - XA,
+    Y is YE - YA,
+    Z is ZE - ZA,
+    N is X * Y * Z.
+
+cuboid_intersection(C1,C2,C):-
+    \+ overlap(C1,C2),
+    C = [x=0..0,y=0..0,z=0..0].
+cuboid_intersection(C1,C2,C):-
+    overlap(C1,C2),
+    C1 = [x=X1,y=Y1,z=Z1],
+    C2 = [x=X2,y=Y2,z=Z2],
+    common_range(X1,X2,X),
+    common_range(Y1,Y2,Y),
+    common_range(Z1,Z2,Z),
+    C = [x=X,y=Y,z=Z].
+
+common_range(R1,R2,R):-
+    \+ overlap(R1,R2),
+    R = 0..0.
+common_range(R1,R2,R):-
+    overlap(R1,R2),
+    R1 = X1A..X1E,
+    R2 = X2A..X2E,
+    XA is max(X1A,X2A),
+    XE is min(X1E,X2E),
+    R = XA..XE. 
+
+is_empty_cuboid(C):-
+    C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
+    (   XA #= XE 
+    ->  true
+    ;   YA #= YE
+    ->  true
+    ;   ZA #= ZE
+    ->  true).
+
+    
+
+main(Solution1, Solution2):-
+    main('input.txt',Solution1, Solution2).
+main(File, Solution1, Solution2):-
+    read_cuboids(File),
+    solve_1(Solution1),
+    solve_2(Calls,Boards,Solution2).
+
+solve_1(S):-
+    count_on_cubes(S).
+
+solve_2(Calls,Boards,R).
+
+read_cuboids(File):-
+    retractall(cuboid(_,_,_,_)),
+    read_data(File,Lines),
+    lines_cuboids(Lines).
+    
 read_data(File,Lines):-
     open(File, read, Stream),
     read_file(Stream, Lines), !,
