@@ -4,6 +4,10 @@
 :- use_module(library(apply)).
 :- dynamic cuboid_state/4.
 
+%
+% Enumeration approach (mostly)
+%
+
 % backtracks over all cuboid states and returns corresp. state of given cube
 check_cube_state([X,Y,Z],S):-
     cuboid_state(S,x=X1,y=Y1,z=Z1),
@@ -20,15 +24,6 @@ find_cube_state(C,S):-
     ;   reverse(States, [S|_])
     ).
 
-% counts number of cubes in cuboid
-cubes_in_cuboid(C,N):-
-    C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
-    X is XE - XA,
-    Y is YE - YA,
-    Z is ZE - ZA,
-    format('~:d',[N]),
-    N is X * Y * Z.
-
 % count the on cubes from the enumerator - is det.
 count_on_cubes(Enumerator, N):-
     findall(_, (
@@ -38,12 +33,6 @@ count_on_cubes(Enumerator, N):-
         ), OnCubes),
     length(OnCubes,N).
 
-% helper
-cubes_in_hull(N):-
-    hull_cuboid(H),
-    count_on_cubes(enumerate_cuboid(H),N),
-    format('~:d~n',[N]).
-
 % generate the list of cubes in this cuboid
 enumerate_cuboid(C, [X,Y,Z]):-
     C = [x=X1,y=Y1,z=Z1],
@@ -52,36 +41,12 @@ enumerate_cuboid(C, [X,Y,Z]):-
     Z in Z1,
     labeling([],[X,Y,Z]).
 
-count_cuboid_states(N):-
-    findall(_, cuboid_state(_,_,_,_), L),
-    length(L, N).
+initialization_cuboid(C):- 
+    C = [=(x,..(-50,50)),=(y,..(-50,50)),=(z,..(-50,50))].
     
-
-initialization_cuboid(C):- C = [=(x,..(-50,50)),=(y,..(-50,50)),=(z,..(-50,50))].
-    
-lines_cuboids([]).
-lines_cuboids([L|Ls]):-
-    split_string(L, " ", " ", [State,Ranges]),
-    atom_string(S,State),
-    split_string(Ranges, ",", " ",[X1,Y1,Z1]),
-    (   term_range(X,X1),
-        term_range(Y,Y1),
-        term_range(Z,Z1)
-    ->  assertz(cuboid_state(S,X,Y,Z))
-    ;   true),
-    lines_cuboids(Ls).
-
-term_range(T,R):-
-    split_string(R,"=","",[H,R1]),
-    split_string(R1,".",".",[RA,RE]),
-    term_string(H1, H),
-    term_string(R2, RA),
-    term_string(R3, RE),
-    % uncomment to restrict to initialization region
-    % R2 #=< 50,
-    % R3 #>= -50,
-    T = (H1=R2..R3).
-
+%
+% Convex Hull approach
+%
 overlap(C1,C2):-
     C1 = [x=X1,y=Y1,z=Z1],
     C2 = [x=X2,y=Y2,z=Z2],
@@ -91,13 +56,6 @@ overlap(C1,C2):-
 overlap(XA..XE,YA..YE):-
     YA #=< XE,
     YE #>= XA.
-
-test_overlaps():-
-    cuboid_state(S,X,Y,Z),
-    cuboid_state(S,X1,Y1,Z1),
-    (   overlap([X,Y,Z],[X1,Y1,Z1])
-    ->  format('operlapping: ~w - ~w~n',[[X,Y,Z],[X1,Y1,Z1]])
-    ;   true).
 
 combine_cuboids(C1,C2,C):-
     C1 = [x=X1A..X1E,y=Y1A..Y1E,z=Z1A..Z1E],
@@ -160,6 +118,9 @@ extrema(State, Lense, MinOrMax, Extremum):-
     map(Lense,L,L1),
     call(MinOrMax,L1,Extremum).
 
+%
+% Main
+%
 main(Solution1, Solution2):-
     main('input.txt',Solution1, Solution2).
 main(File, Solution1, Solution2):-
@@ -175,6 +136,8 @@ solve_2(S):-
     hull_cuboid(H),
     count_on_cubes(enumerate_cuboid(H), S).
 
+% Data i/o
+
 read_states(File):-
     retractall(cuboid_state(_,_,_,_)),
     read_data(File,Lines),
@@ -185,12 +148,62 @@ read_data(File,Lines):-
     read_file(Stream, Lines), !,
     close(Stream).
 
+lines_cuboids([]).
+lines_cuboids([L|Ls]):-
+    split_string(L, " ", " ", [State,Ranges]),
+    atom_string(S,State),
+    split_string(Ranges, ",", " ",[X1,Y1,Z1]),
+    (   term_range(X,X1),
+        term_range(Y,Y1),
+        term_range(Z,Z1)
+    ->  assertz(cuboid_state(S,X,Y,Z))
+    ;   true),
+    lines_cuboids(Ls).
+
+term_range(T,R):-
+    split_string(R,"=","",[H,R1]),
+    split_string(R1,".",".",[RA,RE]),
+    term_string(H1, H),
+    term_string(R2, RA),
+    term_string(R3, RE),
+    % uncomment to restrict to initialization region
+    % R2 #=< 50,
+    % R3 #>= -50,
+    T = (H1=R2..R3).
+
 read_file(Stream, []):-
     at_end_of_stream(Stream).
 read_file(Stream, [X|L]):-
     \+ at_end_of_stream(Stream),
     read_line_to_codes(Stream, X),
     read_file(Stream, L).
+
+% Helpers
+
+cubes_in_hull(N):-
+    hull_cuboid(H),
+    cubes_in_cuboid(H,N).
+
+% counts number of cubes in cuboid
+cubes_in_cuboid(C,N):-
+    C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
+    X is XE - XA,
+    Y is YE - YA,
+    Z is ZE - ZA,
+    format('~:d',[N]),
+    N is X * Y * Z.
+
+% counts the db clauses
+count_state_clauses(N):-
+    findall(_, cuboid_state(_,_,_,_), L),
+    length(L, N).
+
+test_overlaps():-
+    cuboid_state(S,X,Y,Z),
+    cuboid_state(S,X1,Y1,Z1),
+    (   overlap([X,Y,Z],[X1,Y1,Z1])
+    ->  format('operlapping: ~w - ~w~n',[[X,Y,Z],[X1,Y1,Z1]])
+    ;   true).
 
 map(_,[],[]).
 map(Callable,[L|Ls],[R|Rs]):-
