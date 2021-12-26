@@ -2,7 +2,9 @@
 :- use_module(library(clpfd)).
 :- use_module(library(lists)).
 :- use_module(library(apply)).
+:- use_module(library(aggregate)).
 :- dynamic cuboid_state/4.
+:- dynamic counter/1.
 
 %
 % Enumeration approach (mostly)
@@ -32,6 +34,29 @@ count_on_cubes(Enumerator, N):-
         find_cube_state(C,on)
         ), OnCubes),
     length(OnCubes,N).
+
+count_solutions(Goal, _):-
+    setCounter(0),
+    call(Goal),
+    incCounter(1),
+    fail.
+count_solutions(_, C):-
+    counter(C).
+
+enumerate_and_check(Enumerator):-
+    call(Enumerator,C),
+    find_cube_state(C,on).
+
+setCounter(_):-
+    retract(counter(_)),
+    fail.
+setCounter(X):-
+    asserta(counter(X)).
+
+incCounter(X):-
+    retract(counter(N)), !,
+    N1 is X + N,
+    asserta(counter(N1)).
 
 % generate the list of cubes in this cuboid
 enumerate_cuboid(C, [X,Y,Z]):-
@@ -134,7 +159,8 @@ solve_1(S):-
 
 solve_2(S):-
     hull_cuboid(H),
-    count_on_cubes(enumerate_cuboid(H), S).
+    E = enumerate_cuboid(H),
+    count_solutions(enumerate_and_check(E), S).
 
 % Data i/o
 
@@ -180,6 +206,13 @@ read_file(Stream, [X|L]):-
 
 % Helpers
 
+cubes_in_states(State, N):-
+    aggregate_all(
+        sum(N0), 
+        (   cuboid_state(State,X,Y,Z),
+            cubes_in_cuboid([X,Y,Z],N0)
+        ), N).
+
 cubes_in_hull(N):-
     hull_cuboid(H),
     cubes_in_cuboid(H,N).
@@ -187,11 +220,12 @@ cubes_in_hull(N):-
 % counts number of cubes in cuboid
 cubes_in_cuboid(C,N):-
     C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
-    X is XE - XA,
-    Y is YE - YA,
-    Z is ZE - ZA,
-    format('~:d',[N]),
+    X is XE - XA + 1,
+    Y is YE - YA + 1,
+    Z is ZE - ZA + 1,
     N is X * Y * Z.
+
+fnumber(I):- format('~:d', [I]).
 
 % counts the db clauses
 count_state_clauses(N):-
