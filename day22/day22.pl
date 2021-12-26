@@ -12,20 +12,44 @@ check_cube_state([X,Y,Z],S):-
 
 find_cube_state(C,S):-
     findall(S1, check_cube_state(C,S1), States),
+    format('find_cube_state for: ~w~n',[C]),
     (   States = [] 
     ->  S = off
     ;   reverse(States, [S|_])
     ).
 
-count_on_cubes(N):-
-    findall(C, (list_relevant_cubes(C),find_cube_state(C,on)), OnCubes),
+% counts number of cubes in cuboid
+cubes_in_cuboid(C,N):-
+    C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
+    X is XE - XA,
+    Y is YE - YA,
+    Z is ZE - ZA,
+    format('~:d',[N]),
+    N is X * Y * Z.
+
+% count the on cubes from the enumerator
+count_on_cubes(Enumerator, N):-
+    findall(_, (
+        call(Enumerator,C),
+        format('backtracking from fcs~n',[]),
+        find_cube_state(C,on)
+        ), OnCubes),
     length(OnCubes,N).
 
-list_relevant_cubes([X,Y,Z]):-
-    X in -50..50,
-    Y in -50..50,
-    Z in -50..50,
+% generate the list of cubes in this cuboid
+enumerate_cuboid(C, [X,Y,Z]):-
+    C = [x=X1,y=Y1,z=Z1],
+    X in X1,
+    Y in Y1,
+    Z in Z1,
     labeling([],[X,Y,Z]).
+
+count_cuboid_clauses(N):-
+    findall(_, cuboid(_,_,_,_), L),
+    length(L, N).
+    
+
+initialization_cuboid(C):- C = [=(x,..(-50,50)),=(y,..(-50,50)),=(z,..(-50,50))].
     
 lines_cuboids([]).
 lines_cuboids([L|Ls]):-
@@ -49,18 +73,6 @@ term_range(T,R):-
     % R2 #=< 50,
     % R3 #>= -50,
     T = (H1=R2..R3).
-
-count_on_in_cuboid():-
-    cuboid(S,x=X,y=Y,z=Z),
-    states_in_cuboid(X,Y,Z,on,C).
-
-states_in_cuboid(x=XRange,y=YRange,z=ZRange,State,[X,Y,Z]):-
-    X in XRange,
-    Y in YRange,
-    Z in ZRange,
-    labeling([],[X,Y,Z]),
-    find_cube_state([X,Y,Z],S),
-    S = State.
 
 overlap(C1,C2):-
     C1 = [x=X1,y=Y1,z=Z1],
@@ -86,13 +98,6 @@ combine_cuboids(C1,C2,C):-
     YA is min(Y1A,Y2A), YE is max(Y1E,Y2E),
     ZA is min(Z1A,Z2A), ZE is max(Z1E,Z2E),
     C = [x=XA..XE,y=YA..YE,z=ZA..ZE].
-
-cubes_in_cuboid(C,N):-
-    C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
-    X is XE - XA,
-    Y is YE - YA,
-    Z is ZE - ZA,
-    N is X * Y * Z.
 
 cuboid_intersection(C1,C2,C):-
     \+ overlap(C1,C2),
@@ -126,19 +131,41 @@ is_empty_cuboid(C):-
     ;   ZA #= ZE
     ->  true).
 
-    
+hull_cuboid(C):-
+    extrema(on, xa_lense, min_list, XA),
+    extrema(on, xe_lense, max_list, XE),
+    extrema(on, ya_lense, min_list, YA),
+    extrema(on, ye_lense, max_list, YE),
+    extrema(on, za_lense, min_list, ZA),
+    extrema(on, ze_lense, max_list, ZE),
+    C = [x=XA..XE,y=YA..YE,z=ZA..ZE].    
+
+xa_lense([x=XA.._,_,_],XA).
+xe_lense([x=_..XE,_,_],XE).
+ya_lense([_,y=YA.._,_],YA).
+ye_lense([_,y=_..YE,_],YE).
+za_lense([_,_,z=ZA.._],ZA).
+ze_lense([_,_,z=_..ZE],ZE).
+
+extrema(State, Lense, MinOrMax, Extremum):-
+    findall([X,Y,Z], cuboid(State,X,Y,Z), L),
+    map(Lense,L,L1),
+    call(MinOrMax,L1,Extremum).
 
 main(Solution1, Solution2):-
     main('input.txt',Solution1, Solution2).
 main(File, Solution1, Solution2):-
     read_cuboids(File),
     solve_1(Solution1),
-    solve_2(Calls,Boards,Solution2).
+    solve_2(Solution2).
 
 solve_1(S):-
-    count_on_cubes(S).
+    initialization_cuboid(C),
+    count_on_cubes(enumerate_cuboid(C), S).
 
-solve_2(Calls,Boards,R).
+solve_2(S):-
+    hull_cuboid(H),
+    count_on_cubes(enumerate_cuboid(H), S).
 
 read_cuboids(File):-
     retractall(cuboid(_,_,_,_)),
@@ -156,3 +183,9 @@ read_file(Stream, [X|L]):-
     \+ at_end_of_stream(Stream),
     read_line_to_codes(Stream, X),
     read_file(Stream, L).
+
+map(_,[],[]).
+map(Callable,[L|Ls],[R|Rs]):-
+    call(Callable, L, R),
+    map(Callable, Ls, Rs).
+
