@@ -72,23 +72,6 @@ initialization_cuboid(C):-
     C = [=(x,..(-50,50)),=(y,..(-50,50)),=(z,..(-50,50))].
     
 %
-% Enumeration approach
-%
-
-foo(C,CurrC, CurrCList):-
-    cuboid_intersection(C,CurrC,IC),
-    enumerate_cuboid(IC, [X,Y,Z]),
-    mark_seen(CurrCList, [X,Y,Z], NewCurrList).
-
-mark_seen([],_,[]).
-mark_seen([[X,Y,Z]|Ls], [X,Y,Z], [[~X,Y,Z]|Rs]):-
-    mark_seen(Ls, [X,Y,Z], Rs).
-mark_seen([[X1,Y1,Z1]|Ls], [X,Y,Z], [[X1,Y1,Z1]|Rs]):-
-    [X1,Y1,Z1] \= [X,Y,Z],
-    mark_seen(Ls, [X,Y,Z], Rs).
-
-
-%
 % Convex Hull approach
 %
 overlap(C1,C2):-
@@ -120,6 +103,24 @@ cuboid_intersection(C1,C2,C):-
     common_range(Y1,Y2,Y),
     common_range(Z1,Z2,Z),
     C = [x=X,y=Y,z=Z].
+
+split_from_intersection(C,I,[]):-
+    \+ overlap(C,I).
+split_from_intersection(C,I,[S1,S2|Ls]):-
+    overlap(C,I),
+    cuboid_intersection(C,I,I1),
+    \+ is_empty_cuboid(I1), % not just adjacent
+    C = [x=XA..XE,y=Y,z=Z],
+    I = [x=X1A..X1E,y=Y1,z=Z1],
+    common_range(XA..XE,X1A..X1E,XCA..XCE),
+    XAmin is min(XA,X1A),
+    XEmin is min(XE,X1E),
+    XUpper = (x=XAmin..XAmax),
+    XLower = (x=XEmin..XEmax),
+    S1 = [XUpper,Y,Z],
+    S2 = [XLower,Y,Z],
+    Rest = [XMiddle,Y,Z],
+    split_from_intersection(Rest,I,Ls).
 
 common_range(R1,R2,R):-
     \+ overlap(R1,R2),
@@ -161,6 +162,10 @@ extrema(State, Lense, MinOrMax, Extremum):-
     findall([X,Y,Z], cuboid_state(State,X,Y,Z), L),
     map(Lense,L,L1),
     call(MinOrMax,L1,Extremum).
+
+foo():-
+    cuboid_intersection(C,CtoAdd,I),
+    split_from_intersection(CtoAdd,I,L).
 
 %
 % Main
