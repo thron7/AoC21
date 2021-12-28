@@ -81,8 +81,8 @@ overlap(C1,C2):-
     overlap(Y1,Y2),
     overlap(Z1,Z2).
 overlap(XA..XE,YA..YE):-
-    YA #< XE,
-    YE #> XA.
+    YA #=< XE,
+    YE #>= XA.
 
 combine_cuboids(C1,C2,C):-
     C1 = [x=X1A..X1E,y=Y1A..Y1E,z=Z1A..Z1E],
@@ -94,7 +94,7 @@ combine_cuboids(C1,C2,C):-
 
 cuboid_intersection(C1,C2,C):-
     \+ overlap(C1,C2),
-    C = [x=0..0,y=0..0,z=0..0].
+    C = [x=0..(-1),y=0..(-1),z=0..(-1)].
 cuboid_intersection(C1,C2,C):-
     overlap(C1,C2),
     C1 = [x=X1,y=Y1,z=Z1],
@@ -130,10 +130,9 @@ split_range(XA..XE,X1A..X1E,L):-
     ->  L = [XA..XCA,XCE..XE]
     ;   L = [XA..XCA]).
     
-
 common_range(R1,R2,R):-
     \+ overlap(R1,R2),
-    R = 0..0.
+    R = 0..(-1).
 common_range(R1,R2,R):-
     overlap(R1,R2),
     R1 = X1A..X1E,
