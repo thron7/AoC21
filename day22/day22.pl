@@ -106,21 +106,30 @@ cuboid_intersection(C1,C2,C):-
 
 split_from_intersection(C,I,[]):-
     \+ overlap(C,I).
-split_from_intersection(C,I,[S1,S2|Ls]):-
+split_from_intersection(C,I,[]):-
     overlap(C,I),
     cuboid_intersection(C,I,I1),
-    \+ is_empty_cuboid(I1), % not just adjacent
-    C = [x=XA..XE,y=Y,z=Z],
-    I = [x=X1A..X1E,y=Y1,z=Z1],
+    is_empty_cuboid(I1). % just adjacent
+split_from_intersection(C,I,L):-
+    overlap(C,I),
+    cuboid_intersection(C,I,I1),
+    \+ is_empty_cuboid(I1),
+    C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
+    I = [x=X1A..X1E,y=Y1A..Y1E,z=Z1A..Z1E],
+    split_range(XA..XE,X1A..X1E,S1),
+    split_range(YA..YE,Y1A..Y1E,S2),
+    split_range(ZA..ZE,Z1A..Z1E,S3),
+    append([S1,S2,S3],L).
+
+split_range(XA..XE,X1A..X1E,L):-
+    % TODO: what about XA..XE = XCA..XCE?
     common_range(XA..XE,X1A..X1E,XCA..XCE),
-    XAmin is min(XA,X1A),
-    XEmin is min(XE,X1E),
-    XUpper = (x=XAmin..XAmax),
-    XLower = (x=XEmin..XEmax),
-    S1 = [XUpper,Y,Z],
-    S2 = [XLower,Y,Z],
-    Rest = [XMiddle,Y,Z],
-    split_from_intersection(Rest,I,Ls).
+    (   (XA = XCA, XCE #< XE)
+    ->  L = [XCE..XE]
+    ;   (XA #< XCA, XCE #< XE)
+    ->  L = [XA..XCA,XCE..XE]
+    ;   L = [XA..XCA]).
+    
 
 common_range(R1,R2,R):-
     \+ overlap(R1,R2),
