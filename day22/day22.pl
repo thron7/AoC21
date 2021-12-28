@@ -122,17 +122,15 @@ split_from_intersection(C,I,L):-
     append([S1,S2,S3],L).
 
 split_range(XA..XE,X1A..X1E,L):-
-    % TODO: what about XA..XE = XCA..XCE?
     common_range(XA..XE,X1A..X1E,XCA..XCE),
     (   (XA = XCA, XCE #< XE)
     ->  L = [XCE..XE]
     ;   (XA #< XCA, XCE #< XE)
     ->  L = [XA..XCA,XCE..XE]
-    ;   L = [XA..XCA]).
+    ;   (XA #< XCA, XCE = XE)
+    ->  L = [XA..XCA]
+    ;   L = []).
     
-common_range(R1,R2,R):-
-    \+ overlap(R1,R2),
-    R = 0..(-1).
 common_range(R1,R2,R):-
     overlap(R1,R2),
     R1 = X1A..X1E,
