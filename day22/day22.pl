@@ -81,8 +81,8 @@ overlap(C1,C2):-
     overlap(Y1,Y2),
     overlap(Z1,Z2).
 overlap(XA..XE,YA..YE):-
-    YA #=< XE,
-    YE #>= XA.
+    YA #< XE,
+    YE #> XA.
 
 combine_cuboids(C1,C2,C):-
     C1 = [x=X1A..X1E,y=Y1A..Y1E,z=Z1A..Z1E],
