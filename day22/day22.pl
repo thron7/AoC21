@@ -93,9 +93,6 @@ combine_cuboids(C1,C2,C):-
     C = [x=XA..XE,y=YA..YE,z=ZA..ZE].
 
 cuboid_intersection(C1,C2,C):-
-    \+ overlap(C1,C2),
-    C = [x=0..(-1),y=0..(-1),z=0..(-1)].
-cuboid_intersection(C1,C2,C):-
     overlap(C1,C2),
     C1 = [x=X1,y=Y1,z=Z1],
     C2 = [x=X2,y=Y2,z=Z2],
@@ -105,30 +102,106 @@ cuboid_intersection(C1,C2,C):-
     C = [x=X,y=Y,z=Z].
 
 split_from_intersection(C,I,[]):-
-    \+ overlap(C,I).
+    \+ overlap(C,I), !.
 split_from_intersection(C,I,[]):-
+    C = I, !.
+split_from_intersection(C,I,[C1|Ls]):-
     overlap(C,I),
-    cuboid_intersection(C,I,I1),
-    is_empty_cuboid(I1). % just adjacent
-split_from_intersection(C,I,L):-
-    overlap(C,I),
-    cuboid_intersection(C,I,I1),
-    \+ is_empty_cuboid(I1),
+    cuboid_intersection(C,I,I),  % intersecting reproduces intersection
     C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
     I = [x=X1A..X1E,y=Y1A..Y1E,z=Z1A..Z1E],
-    split_range(XA..XE,X1A..X1E,S1),
-    split_range(YA..YE,Y1A..Y1E,S2),
-    split_range(ZA..ZE,Z1A..Z1E,S3),
-    append([S1,S2,S3],L).
+    split_range(XA..XE,X1A..X1E,Lx),
+    split_range(YA..YE,Y1A..Y1E,Ly),
+    split_range(ZA..ZE,Z1A..Z1E,Lz),
+    (   Lx \= []
+    ->  Lx = [Split,Rest],
+        C1 = [x=Split,y=YA..YE,z=ZA..ZE],
+        R = [x=Rest,y=YA..YE,z=ZA..ZE]
+    ;   Ly \= []
+    ->  Ly = [Split,Rest],
+        C1 = [x=XA..XE,y=Split,z=ZA..ZE],
+        R = [x=XA..XE,y=Rest,z=ZA..ZE]
+    ;   Lz = [Split,Rest],
+        C1 = [x=XA..XE,y=YA..YE,z=Split],
+        R = [x=XA..XE,y=YA..YE,z=Rest]
+    ),
+    split_from_intersection(R,I,Ls).
 
+compose_from_splits_x([],_,_,[]).
+compose_from_splits_x([L1|Lx],YR,ZR,[C|Ls]):-
+    C = [x=L1,y=YR,z=ZR],
+    compose_from_splits_x(Lx, YR, ZR, Ls).
+compose_from_splits_y([],_,_,[]).
+compose_from_splits_y([L1|Ly],XR,ZR,[C|Ls]):-
+    C = [x=XR,y=L1,z=ZR],
+    compose_from_splits_y(Ly, XR, ZR, Ls).
+compose_from_splits_z([],_,_,[]).
+compose_from_splits_z([L1|Lz],XR,YR,[C|Ls]):-
+    C = [x=XR,y=YR,z=L1],
+    compose_from_splits_z(Lz, XR, YR, Ls).
+
+process_states(OnCuboids):-
+    findall([State,X,Y,Z], cuboid_state(State,X,Y,Z), States),
+    process_states(States,[],OnCuboids).
+process_states([],Cs,Cs).
+process_states([S|Ss],Agenda,Cs):-
+    process_state(S,Agenda).
+
+process_state([on|C],Agenda):-
+    add_cuboid([C],Agenda).
+process_state([off|C],Agenda):-
+    remove_cuboid([C],Agenda).
+
+% add_cuboid(+RestOldOnCuboids, +StateSplits, +OldOnCuboids, -NewOnCuboids).
+add_cuboid([],Ss,OldOnCuboids,NewOnCuboids):-
+    append([Ss,OldOnCuboids],NewOnCuboids).
+add_cuboid([R|RestOnCuboids], [S|Splits], OldOns, NewOns):-
+    (   \+ overlap(S,C)
+    ->  add_cuboid(States,[C|Cs],Ons)
+    ;   cuboid_intersection(S,C,I),
+        split_from_intersection(C,I,NewSplits),
+        append([NewSplits,Splits],L),
+        add_cuboid(RestOnCuboids,L,OldOns,NewOns)).
+% add_cuboid(+OldOnCuboid, +StateSplits, -NewStateSplits)
+add_cuboid(_,[],[]).
+add_cuboid(R,[S|Splits],NewSplits):-
+    overlap(R,S),
+    cuboid_intersection(R,S,I),
+    split_from_intersection(S,I,Ss),
+    add_cuboid(R,Splits,Ns),
+    append([Ss,Ns],NewSplits).
+add_cuboid(R,[S|Splits],NewSplits):-
+    \+ overlap(R,S),
+    add_cuboid(R,Splits,Ns),
+    append([[S],Ns],NewSplits).
+
+remove_cuboid([off|C],[],[]).
+
+% split_range(XA..XE,X1A..X1E,L):-
+%     common_range(XA..XE,X1A..X1E,XCA..XCE),
+%     (   (XA = XCA, XCE #< XE)
+%     ->  Xl is XCE + 1,
+%         L = [Xl..XE]
+%     ;   (XA #< XCA, XCE #< XE)
+%     ->  Xl is XCA - 1,
+%         Xu is XCE + 1,
+%         L = [XA..Xl,Xu..XE]
+%     ;   (XA #< XCA, XCE = XE)
+%     ->  Xu is XCA - 1,
+%         L = [XA..Xu]
+%     ;   L = []).
 split_range(XA..XE,X1A..X1E,L):-
     common_range(XA..XE,X1A..X1E,XCA..XCE),
-    (   (XA = XCA, XCE #< XE)
-    ->  L = [XCE..XE]
-    ;   (XA #< XCA, XCE #< XE)
-    ->  L = [XA..XCA,XCE..XE]
-    ;   (XA #< XCA, XCE = XE)
-    ->  L = [XA..XCA]
+    (   XA #< XCA
+    ->  Xu is XCA - 1,
+        S = XA..Xu,
+        R = XCA..XE,
+        L = [S,R]
+    ;   XCE #< XE
+    ->  Xl is XCE + 1,
+        S = Xl..XE,
+        R = XA..XCE,
+        L = [S,R]
     ;   L = []).
     
 common_range(R1,R2,R):-
@@ -139,14 +212,16 @@ common_range(R1,R2,R):-
     XE is min(X1E,X2E),
     R = XA..XE. 
 
+% is_empty_cuboid(C):-
+%     C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
+%     (   XA #= XE 
+%     ->  true
+%     ;   YA #= YE
+%     ->  true
+%     ;   ZA #= ZE
+%     ->  true).
 is_empty_cuboid(C):-
-    C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
-    (   XA #= XE 
-    ->  true
-    ;   YA #= YE
-    ->  true
-    ;   ZA #= ZE
-    ->  true).
+    C = [x=0..(-1),y=0..(-1),z=0..(-1)].
 
 hull_cuboid(C):-
     extrema(on, xa_lense, min_list, XA),
@@ -168,10 +243,6 @@ extrema(State, Lense, MinOrMax, Extremum):-
     findall([X,Y,Z], cuboid_state(State,X,Y,Z), L),
     map(Lense,L,L1),
     call(MinOrMax,L1,Extremum).
-
-foo():-
-    cuboid_intersection(C,CtoAdd,I),
-    split_from_intersection(CtoAdd,I,L).
 
 %
 % Main
