@@ -140,28 +140,26 @@ compose_from_splits_z([L1|Lz],XR,YR,[C|Ls]):-
     C = [x=XR,y=YR,z=L1],
     compose_from_splits_z(Lz, XR, YR, Ls).
 
+% read_states('test1.txt'), process_states(Os), map(cubes_in_cuboid, Os, Ns), sum_list(Ns,N).
 process_states(OnCuboids):-
     findall([State,X,Y,Z], cuboid_state(State,X,Y,Z), States),
     process_states(States,[],OnCuboids).
 process_states([],Cs,Cs).
-process_states([S|Ss],Agenda,Cs):-
-    process_state(S,Agenda).
+process_states([S|Ss],Ons,OnCuboids):-
+    process_state(S,Ons,NewOns),
+    process_states(Ss,NewOns,OnCuboids).
 
-process_state([on|C],Agenda):-
-    add_cuboid([C],Agenda).
-process_state([off|C],Agenda):-
-    remove_cuboid([C],Agenda).
+process_state([on|C], Ons, NewOns):-
+    add_cuboid(Ons,[C], Ons, NewOns).
+process_state([off|C], Ons, NewOns):-
+    remove_cuboid(Ons, C, NewOns).
 
 % add_cuboid(+RestOldOnCuboids, +StateSplits, +OldOnCuboids, -NewOnCuboids).
 add_cuboid([],Ss,OldOnCuboids,NewOnCuboids):-
     append([Ss,OldOnCuboids],NewOnCuboids).
-add_cuboid([R|RestOnCuboids], [S|Splits], OldOns, NewOns):-
-    (   \+ overlap(S,C)
-    ->  add_cuboid(States,[C|Cs],Ons)
-    ;   cuboid_intersection(S,C,I),
-        split_from_intersection(C,I,NewSplits),
-        append([NewSplits,Splits],L),
-        add_cuboid(RestOnCuboids,L,OldOns,NewOns)).
+add_cuboid([R|RestOnCuboids], Splits, OldOns, NewOns):-
+    add_cuboid(R, Splits, NewSplits),
+    add_cuboid(RestOnCuboids, NewSplits, OldOns, NewOns).
 % add_cuboid(+OldOnCuboid, +StateSplits, -NewStateSplits)
 add_cuboid(_,[],[]).
 add_cuboid(R,[S|Splits],NewSplits):-
@@ -175,21 +173,18 @@ add_cuboid(R,[S|Splits],NewSplits):-
     add_cuboid(R,Splits,Ns),
     append([[S],Ns],NewSplits).
 
-remove_cuboid([off|C],[],[]).
+remove_cuboid([],_,[]).
+remove_cuboid([O|Ons], R, NewOns):-
+    overlap(O,R),
+    cuboid_intersection(O,R,I),
+    split_from_intersection(O,I,Ss),
+    remove_cuboid(Ons,R,Ns),
+    append([Ss,Ns],NewOns).
+remove_cuboid([O|Ons], R, NewOns):-
+    \+ overlap(O,R),
+    remove_cuboid(Ons, R, Ns),
+    append([[O],Ns],NewOns).
 
-% split_range(XA..XE,X1A..X1E,L):-
-%     common_range(XA..XE,X1A..X1E,XCA..XCE),
-%     (   (XA = XCA, XCE #< XE)
-%     ->  Xl is XCE + 1,
-%         L = [Xl..XE]
-%     ;   (XA #< XCA, XCE #< XE)
-%     ->  Xl is XCA - 1,
-%         Xu is XCE + 1,
-%         L = [XA..Xl,Xu..XE]
-%     ;   (XA #< XCA, XCE = XE)
-%     ->  Xu is XCA - 1,
-%         L = [XA..Xu]
-%     ;   L = []).
 split_range(XA..XE,X1A..X1E,L):-
     common_range(XA..XE,X1A..X1E,XCA..XCE),
     (   XA #< XCA
