@@ -4,6 +4,7 @@
 :- use_module(library(apply)).
 :- use_module(library(aggregate)).
 :- set_prolog_stack(global, limit(5 000 000 000)).
+:- set_prolog_stack(local, limit(2 000 000 000)).
 :- dynamic cuboid_state/4.
 :- dynamic counter/1.
 :- op(100,fy,~).
@@ -143,11 +144,14 @@ compose_from_splits_z([L1|Lz],XR,YR,[C|Ls]):-
 % read_states('test1.txt'), process_states(Os), map(cubes_in_cuboid, Os, Ns), sum_list(Ns,N).
 process_states(OnCuboids):-
     findall([State,X,Y,Z], cuboid_state(State,X,Y,Z), States),
-    process_states(States,[],OnCuboids).
-process_states([],Cs,Cs).
-process_states([S|Ss],Ons,OnCuboids):-
-    process_state(S,Ons,NewOns),
-    process_states(Ss,NewOns,OnCuboids).
+    process_states(States,0,[],OnCuboids).
+process_states([],_,Cs,Cs).
+process_states([S|Ss],I,Ons,OnCuboids):-
+    length(Ons, LOns),
+    format('processing: (~w) ~w~nlength Ons: ~w~n', [I, S,LOns]),
+    I1 is I + 1,
+    time(process_state(S,Ons,NewOns)),
+    process_states(Ss,I1,NewOns,OnCuboids).
 
 process_state([on|C], Ons, NewOns):-
     add_cuboid(Ons,[C], Ons, NewOns).
@@ -254,9 +258,12 @@ solve_1(S):-
     count_on_cubes(enumerate_cuboid(C), S).
 
 solve_2(S):-
-    hull_cuboid(H),
-    E = enumerate_cuboid(H),
-    count_solutions(enumerate_and_check(E), S).
+    % hull_cuboid(H),
+    % E = enumerate_cuboid(H),
+    % count_solutions(enumerate_and_check(E), S).
+    process_states(Os), 
+    map(cubes_in_cuboid, Os, Ns), !,
+    sum_list(Ns,S).
 
 % Data i/o
 
