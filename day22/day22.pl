@@ -6,8 +6,6 @@
 :- set_prolog_stack(global, limit(5 000 000 000)).
 :- set_prolog_stack(local, limit(2 000 000 000)).
 :- dynamic cuboid_state/4.
-:- dynamic counter/1.
-:- op(100,fy,~).
 
 %
 % Enumeration approach (mostly)
@@ -38,29 +36,6 @@ count_on_cubes(Enumerator, N):-
         ), OnCubes),
     length(OnCubes,N).
 
-count_solutions(Goal, _):-
-    setCounter(0),
-    call(Goal),
-    incCounter(1),
-    fail.
-count_solutions(_, C):-
-    counter(C).
-
-enumerate_and_check(Enumerator):-
-    call(Enumerator,C),
-    find_cube_state(C,on).
-
-setCounter(_):-
-    retract(counter(_)),
-    fail.
-setCounter(X):-
-    asserta(counter(X)).
-
-incCounter(X):-
-    retract(counter(N)), !,
-    N1 is X + N,
-    asserta(counter(N1)).
-
 % generate the list of cubes in this cuboid
 enumerate_cuboid(C, [X,Y,Z]):-
     C = [x=X1,y=Y1,z=Z1],
@@ -73,7 +48,7 @@ initialization_cuboid(C):-
     C = [=(x,..(-50,50)),=(y,..(-50,50)),=(z,..(-50,50))].
     
 %
-% Convex Hull approach
+% Tracking approach
 %
 overlap(C1,C2):-
     C1 = [x=X1,y=Y1,z=Z1],
@@ -84,14 +59,6 @@ overlap(C1,C2):-
 overlap(XA..XE,YA..YE):-
     YA #=< XE,
     YE #>= XA.
-
-combine_cuboids(C1,C2,C):-
-    C1 = [x=X1A..X1E,y=Y1A..Y1E,z=Z1A..Z1E],
-    C2 = [x=X2A..X2E,y=Y2A..Y2E,z=Z2A..Z2E],
-    XA is min(X1A,X2A), XE is max(X1E,X2E),
-    YA is min(Y1A,Y2A), YE is max(Y1E,Y2E),
-    ZA is min(Z1A,Z2A), ZE is max(Z1E,Z2E),
-    C = [x=XA..XE,y=YA..YE,z=ZA..ZE].
 
 cuboid_intersection(C1,C2,C):-
     overlap(C1,C2),
@@ -128,20 +95,6 @@ split_from_intersection(C,I,[C1|Ls]):-
     ),
     split_from_intersection(R,I,Ls).
 
-compose_from_splits_x([],_,_,[]).
-compose_from_splits_x([L1|Lx],YR,ZR,[C|Ls]):-
-    C = [x=L1,y=YR,z=ZR],
-    compose_from_splits_x(Lx, YR, ZR, Ls).
-compose_from_splits_y([],_,_,[]).
-compose_from_splits_y([L1|Ly],XR,ZR,[C|Ls]):-
-    C = [x=XR,y=L1,z=ZR],
-    compose_from_splits_y(Ly, XR, ZR, Ls).
-compose_from_splits_z([],_,_,[]).
-compose_from_splits_z([L1|Lz],XR,YR,[C|Ls]):-
-    C = [x=XR,y=YR,z=L1],
-    compose_from_splits_z(Lz, XR, YR, Ls).
-
-% read_states('test1.txt'), process_states(Os), map(cubes_in_cuboid, Os, Ns), sum_list(Ns,N).
 process_states(OnCuboids):-
     findall([State,X,Y,Z], cuboid_state(State,X,Y,Z), States),
     process_states(States,0,[],OnCuboids).
@@ -189,6 +142,7 @@ remove_cuboid([O|Ons], R, NewOns):-
     remove_cuboid(Ons, R, Ns),
     append([[O],Ns],NewOns).
 
+% returns at most a single split and the rest of the range
 split_range(XA..XE,X1A..X1E,L):-
     common_range(XA..XE,X1A..X1E,XCA..XCE),
     (   XA #< XCA
@@ -211,38 +165,6 @@ common_range(R1,R2,R):-
     XE is min(X1E,X2E),
     R = XA..XE. 
 
-% is_empty_cuboid(C):-
-%     C = [x=XA..XE,y=YA..YE,z=ZA..ZE],
-%     (   XA #= XE 
-%     ->  true
-%     ;   YA #= YE
-%     ->  true
-%     ;   ZA #= ZE
-%     ->  true).
-is_empty_cuboid(C):-
-    C = [x=0..(-1),y=0..(-1),z=0..(-1)].
-
-hull_cuboid(C):-
-    extrema(on, xa_lense, min_list, XA),
-    extrema(on, xe_lense, max_list, XE),
-    extrema(on, ya_lense, min_list, YA),
-    extrema(on, ye_lense, max_list, YE),
-    extrema(on, za_lense, min_list, ZA),
-    extrema(on, ze_lense, max_list, ZE),
-    C = [x=XA..XE,y=YA..YE,z=ZA..ZE].    
-
-xa_lense([x=XA.._,_,_],XA).
-xe_lense([x=_..XE,_,_],XE).
-ya_lense([_,y=YA.._,_],YA).
-ye_lense([_,y=_..YE,_],YE).
-za_lense([_,_,z=ZA.._],ZA).
-ze_lense([_,_,z=_..ZE],ZE).
-
-extrema(State, Lense, MinOrMax, Extremum):-
-    findall([X,Y,Z], cuboid_state(State,X,Y,Z), L),
-    map(Lense,L,L1),
-    call(MinOrMax,L1,Extremum).
-
 %
 % Main
 %
@@ -258,9 +180,6 @@ solve_1(S):-
     count_on_cubes(enumerate_cuboid(C), S).
 
 solve_2(S):-
-    % hull_cuboid(H),
-    % E = enumerate_cuboid(H),
-    % count_solutions(enumerate_and_check(E), S).
     process_states(Os), 
     map(cubes_in_cuboid, Os, Ns), !,
     sum_list(Ns,S).
@@ -315,10 +234,6 @@ cubes_in_states(State, N):-
         (   cuboid_state(State,X,Y,Z),
             cubes_in_cuboid([X,Y,Z],N0)
         ), N).
-
-cubes_in_hull(N):-
-    hull_cuboid(H),
-    cubes_in_cuboid(H,N).
 
 % counts number of cubes in cuboid
 cubes_in_cuboid(C,N):-
